@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+https://github.com/Seongbok74/Sigma_SST_Signal_Study_Tool.git
+
 main.py — Study *.py Finder (recursive) + description() preview (PyQt5)
 
 요구사항
