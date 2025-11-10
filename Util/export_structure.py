@@ -1,44 +1,38 @@
-import os
-import csv
-from datetime import datetime
+# export_structure.py
+from pathlib import Path
 
-# === 설정 ===
-ROOT_DIR = "."        # 기준 폴더 (현재 프로젝트 루트)
-OUT_TXT = "project_structure.txt"
-OUT_CSV = "project_structure.csv"
+IGNORE_DIRS = {
+    ".venv", "venv", "__pycache__", ".git", ".idea", ".vscode",
+    "node_modules", "dist", "build", ".mypy_cache", ".pytest_cache"
+}
+IGNORE_FILES = {".DS_Store"}
 
+def tree(root: Path, prefix=""):
+    entries = sorted([p for p in root.iterdir() if not is_ignored(p)], key=lambda p: (p.is_file(), p.name.lower()))
+    lines = []
+    for i, p in enumerate(entries):
+        connector = "└── " if i == len(entries)-1 else "├── "
+        lines.append(prefix + connector + p.name)
+        if p.is_dir():
+            extension = "    " if i == len(entries)-1 else "│   "
+            lines.extend(tree(p, prefix + extension))
+    return lines
 
-def get_tree_list(root: str):
-    """(depth, path, is_dir) 형태의 리스트 반환"""
-    records = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        depth = dirpath[len(root):].count(os.sep)
-        records.append((depth, dirpath, True))
-        for f in filenames:
-            records.append((depth + 1, os.path.join(dirpath, f), False))
-    return records
-
-
-def export_txt(records):
-    with open(OUT_TXT, "w", encoding="utf-8") as f:
-        f.write(f"# Project Structure (updated {datetime.now()})\n\n")
-        for depth, path, is_dir in records:
-            name = os.path.basename(path)
-            indent = "│   " * (depth - 1) + ("├── " if depth > 0 else "")
-            f.write(f"{indent}{name}/\n" if is_dir else f"{indent}{name}\n")
-    print(f"✅ TXT 파일 저장 완료: {OUT_TXT}")
-
-
-def export_csv(records):
-    with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Depth", "Type", "Path"])
-        for depth, path, is_dir in records:
-            writer.writerow([depth, "DIR" if is_dir else "FILE", path])
-    print(f"✅ CSV 파일 저장 완료: {OUT_CSV}")
-
+def is_ignored(p: Path) -> bool:
+    name = p.name
+    if name in IGNORE_FILES:
+        return True
+    if p.is_dir() and name in IGNORE_DIRS:
+        return True
+    return False
 
 if __name__ == "__main__":
-    data = get_tree_list(ROOT_DIR)
-    export_txt(data)
-    #export_csv(data)
+    # main.py가 있는 폴더의 한 단계 위를 루트로 설정
+    base = Path(__file__).resolve().parent  # 이 파일 기준
+    # 필요하면 한 단계 위로: base = base.parent
+    root = base.parent  # <- 여기서 base.parent로 바꾸면 한 단계 위
+    out = base / "project_structure.txt"
+    lines = [root.resolve().as_posix()]
+    lines += tree(root)
+    out.write_text("\n".join(lines), encoding="utf-8")
+    print(f"Wrote: {out}")
