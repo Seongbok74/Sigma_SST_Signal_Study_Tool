@@ -4,22 +4,6 @@
 https://github.com/Seongbok74/Sigma_SST_Signal_Study_Tool.git
 
 main.py — Study *.py Finder (recursive) + description() preview (PyQt5)
-
-요구사항
-- 기준 위치: ./Subject (main.py와 같은 경로)
-- Subject 하위 모든 깊이에서 파일명에 'study'가 포함된 *.py 파일을 찾는다.
-  예) signal_study.py, StudyECG.py, foo/bar/my_study_v2.py ...
-- 파일을 선택하면, 그 모듈의 `def description():` 함수를 호출해
-  그 반환값(한글 설명 텍스트)을 오른쪽 패널에 표시한다.
-
-주의
-- 선택한 파이썬 파일은 import 되며, top-level 코드가 실행될 수 있음.
-  무거운 처리는 `if __name__ == '__main__':` 아래로 옮기세요.
-- description()은 문자열(str)을 반환하도록 구현하세요.
-
-실행
-    pip install pyqt5
-    python main.py
 """
 
 import os
@@ -44,20 +28,13 @@ def subjects_root() -> str:
 
 
 def find_study_py_recursive(base_folder: str) -> List[Tuple[str, str]]:
-    """
-    base_folder (예: ./Subject) 하위 모든 깊이에서
-    파일명에 'study' 가 포함되고, '.py' 로 끝나는 파일을 찾는다.
-    반환: (표시용 상대경로, 전체경로)
-    """
     results: List[Tuple[str, str]] = []
     if not os.path.isdir(base_folder):
         return results
 
     base_folder = os.path.abspath(base_folder)
     for root, dirs, files in os.walk(base_folder):
-        # 불필요 폴더 스킵(원하면 확장 가능)
         dirs[:] = [d for d in dirs if d != "__pycache__"]
-
         for fn in files:
             if not fn.lower().endswith(".py"):
                 continue
@@ -83,10 +60,6 @@ def import_module_from_path(module_name: str, file_path: str) -> ModuleType:
 
 
 def call_description(mod: ModuleType) -> str:
-    """
-    모듈의 description()을 찾아 호출하고 문자열을 반환.
-    함수가 없거나 예외 발생 시 안내 메시지 반환.
-    """
     if not hasattr(mod, "description"):
         return ("이 파일에는 description() 함수가 없습니다.\n"
                 "예시:\n\n"
@@ -110,7 +83,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(APP_TITLE)
         self.resize(980, 560)
 
-        # 중앙 레이아웃
         central = QtWidgets.QWidget(self)
         self.setCentralWidget(central)
         hl = QtWidgets.QHBoxLayout(central)
@@ -125,7 +97,13 @@ class MainWindow(QtWidgets.QMainWindow):
         btns_row = QtWidgets.QHBoxLayout()
         self.btn_refresh = QtWidgets.QPushButton("Refresh")
         self.btn_refresh.clicked.connect(self.populate_list)
+
+        # === ADDED: Open 버튼 ===
+        self.btn_open = QtWidgets.QPushButton("Open")  # <--- 추가
+        self.btn_open.clicked.connect(self.on_open_clicked)  # <--- 추가
+
         btns_row.addWidget(self.btn_refresh)
+        btns_row.addWidget(self.btn_open)  # <--- 추가
         btns_row.addStretch(1)
 
         left.addWidget(QtWidgets.QLabel("Study files (recursive: ./Subject/**/*study*.py)"))
@@ -157,18 +135,21 @@ class MainWindow(QtWidgets.QMainWindow):
         right.addWidget(self.txt_desc, 1)
         right.addWidget(hint)
 
-        # 합치기
         hl.addLayout(left, 3)
         hl.addLayout(right, 6)
 
-        # 상태바
         self.status = self.statusBar()
         self.status.showMessage("Ready")
 
         # 이벤트 연결
         self.list.currentItemChanged.connect(self.on_selection_changed)
-        self.list.itemDoubleClicked.connect(self.on_selection_changed)
+        # === CHANGED: 더블클릭 시 '열기' ===
+        self.list.itemDoubleClicked.connect(self.on_open_clicked)  # <--- 변경
+
         QtWidgets.QShortcut(Qt.Key_F5, self, activated=self.populate_list)
+        # === ADDED: Enter/Return으로도 열기 ===
+        QtWidgets.QShortcut(Qt.Key_Return, self, activated=self.on_open_clicked)  # <--- 추가
+        QtWidgets.QShortcut(Qt.Key_Enter, self, activated=self.on_open_clicked)   # <--- 추가
 
         # 초기 로드
         self.populate_list()
@@ -218,9 +199,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lab_title.setText(f"<b>{rel}</b>")
         self.lab_path.setText(full)
 
-        # 모듈 import & description() 호출
+        # 모듈 import & description() 호출 (미리보기)
         try:
-            # 모듈명은 경로 기반으로 유니크하게 구성
             rel_module_name = rel.replace(os.sep, "_").replace("-", "_").replace(".", "_")
             module_name = f"subject_auto_{rel_module_name}"
             mod = import_module_from_path(module_name, full)
@@ -229,6 +209,50 @@ class MainWindow(QtWidgets.QMainWindow):
             text = f"[오류] 모듈 import 중 예외 발생:\n{e}\n\n{traceback.format_exc()}"
 
         self.txt_desc.setPlainText(text)
+
+    # --------- OPEN (추가) ---------
+    def on_open_clicked(self, *args):
+        """선택한 study 모듈의 create_window()를 호출해 창을 띄운다."""
+        item = self.list.currentItem()
+        if item is None:
+            QtWidgets.QMessageBox.information(self, "Open", "먼저 파일을 선택하세요.")
+            return
+
+        full = item.data(Qt.UserRole)
+        rel = item.text()
+        try:
+            rel_module_name = rel.replace(os.sep, "_").replace("-", "_").replace(".", "_")
+            module_name = f"subject_auto_{rel_module_name}"
+            mod = import_module_from_path(module_name, full)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Import Error",
+                                           f"모듈 불러오기 실패:\n{e}\n\n{traceback.format_exc()}")
+            return
+
+        if not hasattr(mod, "create_window"):
+            QtWidgets.QMessageBox.information(
+                self, "Open",
+                "이 파일에 create_window() 함수가 없습니다.\n\n"
+                "스터디 파일 끝에 아래 래퍼를 추가하세요:\n"
+                "  def create_window(parent=None):\n"
+                "      from Application.templet.templet_compare_signal import create_window as _tpl\n"
+                "      return _tpl(YourStudyClass())")
+            return
+
+        try:
+            w = mod.create_window(parent=None)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Run Error",
+                                           f"create_window() 실행 실패:\n{e}\n\n{traceback.format_exc()}")
+            return
+
+        if hasattr(w, "show"):
+            w.setAttribute(Qt.WA_DeleteOnClose, True)
+            w.show()
+            self.status.showMessage(f"Opened: {rel}")
+        else:
+            QtWidgets.QMessageBox.information(self, "Open",
+                                              f"반환 객체가 Qt 위젯이 아닙니다: {type(w)}")
 
 
 # ---------------------------- Entry ----------------------------

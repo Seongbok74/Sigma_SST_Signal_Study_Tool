@@ -1,0 +1,40 @@
+[파일 경로]
+C:\Users\bilas\PycharmProjects\Sigma_SST_SignalStudyTool\Subject\...\pearson_study\{파일명}.py
+
+[예제 제목]
+(간단한 한국어 제목)
+
+[학습 포인트 / 목적]
+- (이 예제로 전달하려는 핵심 메시지 1~3줄)
+
+[Figure 구성]
+- Figure1(위): (무엇을 그릴지, 예: ref vs test, 라벨들)
+- Figure2(아래): (무엇을 그릴지, 예: 산점도(x=ref, y=test) / 스펙트럼 / 다른 파형)
+
+[데이터 소스]
+- (택1) CSV 사용: (상대경로 또는 절대경로), 컬럼 설명(예: t, ecg_mV)
+- (택1) 합성: 샘플링 fs, 길이 dur, 기본 파라미터(주파수, 위상, 노이즈 등)
+
+[제어부(Controls)]
+- 위젯 목록: (예: DoubleSpin: freq 0.1~20.0 step 0.1 default 2.0)
+- 토글/선택: (예: Combo: transform in [identity, square, abs])
+- 버튼: (예: “Run/Update” 기본 제공이면 OK, 추가 버튼 있으면 명시)
+
+[계산/지표 (선택)]
+- 표시할 메트릭: (예: Pearson r, RMSE, SNR 등) 계산식/정의 간단 기재
+
+[기본값]
+- fs=, dur=, seed=, 기타 초기값
+
+[업데이트 규칙]
+- 값 변경 시 즉시 업데이트 여부(예: 변경→즉시 api.request_update 호출 / 'Run' 누를 때만)
+- 에러 처리(예: CSV 없으면 합성으로 대체)
+
+[스타일/표시(선택)]
+- 라인 스타일/마커/범례/축 라벨 등 선호
+
+[파이썬/환경]
+- Python 버전(예: 3.8) / 외부 의존(없음 권장)
+
+[비고]
+- 추가 요구사항 있으면 여기에
